@@ -1,0 +1,191 @@
+{
+    "meta": {
+      "instanceId": "b888bd11ec2dc7a04fa45e1136f73df79f1eba53d18fdb167c7214fb0ed0da0e"
+    },
+    "nodes": [
+      {
+        "parameters": {
+          "httpMethod": "GET",
+          "path": "roof-assessment",
+          "responseMode": "responseNode",
+          "options": {}
+        },
+        "id": "b1d47941-98de-4a3e-aea9-d48dd3c40a3e",
+        "name": "Webhook",
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 1,
+        "position": [
+          240,
+          300
+        ]
+      },
+      {
+        "parameters": {
+          "functionCode": "// Extract image URL from the query parameters\nconst imageUrl = $input.item.json.query.imageUrl;\n\nif (!imageUrl) {\n  return {\n    json: {\n      success: false,\n      error: \"No image URL provided. Please include 'imageUrl' as a query parameter.\"\n    }\n  };\n}\n\n// Return the validated image URL for next nodes to use\nreturn {\n  json: {\n    success: true,\n    imageUrl: imageUrl\n  }\n};"
+        },
+        "id": "97db53e5-dc67-4c96-bb2c-3d12c8d2ddcb",
+        "name": "Extract Image URL",
+        "type": "n8n-nodes-base.function",
+        "typeVersion": 1,
+        "position": [
+          460,
+          300
+        ]
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "string": [
+              {
+                "value1": "={{$json[\"success\"]}}",
+                "operation": "equal",
+                "value2": true
+              }
+            ]
+          }
+        },
+        "id": "e3d12be9-f857-4b32-a76e-83e79af7b5b9",
+        "name": "Valid URL?",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 1,
+        "position": [
+          680,
+          300
+        ]
+      },
+      {
+        "parameters": {
+          "authentication": "predefinedCredentialType",
+          "nodeCredentialType": "openAiApi",
+          "operation": "chatCompletion",
+          "model": "gpt-4-vision-preview",
+          "options": {
+            "maxTokens": 1024
+          },
+          "messages": {
+            "values": [
+              {
+                "message": "You are a professional roof inspector. Analyze the image of the roof I'm providing and assess the following:\n\n1. Identify any visible damage (missing shingles, leaks, structural issues, etc.)\n2. Rate the severity of the damage on a scale of 1-10\n3. Provide an estimated price range to fix the issues identified\n4. List recommended repairs and maintenance\n\nBe specific and professional in your assessment.",
+                "role": "system"
+              },
+              {
+                "message": "Please analyze this roof image:",
+                "role": "user",
+                "mediaItems": [
+                  {
+                    "type": "image",
+                    "data": "={{$json[\"imageUrl\"]}}"
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        "id": "b41e4fd4-73e4-4fe3-bc50-5ab4ad060c63",
+        "name": "OpenAI Vision Analysis",
+        "type": "n8n-nodes-base.openAi",
+        "typeVersion": 2,
+        "position": [
+          920,
+          220
+        ]
+      },
+      {
+        "parameters": {
+          "options": {
+            "title": "Roof Damage Assessment Result"
+          },
+          "respondWith": "json",
+          "responseBody": "={{$json}}",
+          "options.responseCode": 200
+        },
+        "id": "cfd8f64f-f9ed-46ca-b4fa-85c9868f72c0",
+        "name": "Success Response",
+        "type": "n8n-nodes-base.respondToWebhook",
+        "typeVersion": 1,
+        "position": [
+          1100,
+          220
+        ]
+      },
+      {
+        "parameters": {
+          "options": {
+            "title": "Error: Invalid Request"
+          },
+          "respondWith": "json",
+          "responseBody": "={{$json}}",
+          "options.responseCode": 400
+        },
+        "id": "a3f4b541-b258-4c6e-9efb-9d4cec17d621",
+        "name": "Error Response",
+        "type": "n8n-nodes-base.respondToWebhook",
+        "typeVersion": 1,
+        "position": [
+          920,
+          400
+        ]
+      }
+    ],
+    "connections": {
+      "Webhook": {
+        "main": [
+          [
+            {
+              "node": "Extract Image URL",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Extract Image URL": {
+        "main": [
+          [
+            {
+              "node": "Valid URL?",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Valid URL?": {
+        "main": [
+          [
+            {
+              "node": "OpenAI Vision Analysis",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Error Response",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "OpenAI Vision Analysis": {
+        "main": [
+          [
+            {
+              "node": "Success Response",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "tags": [],
+    "pinData": {},
+    "settings": {},
+    "staticData": null,
+    "name": "Roof Damage Assessment",
+    "versionId": "e7ed1d96-3b25-4a2c-b7e8-9f3a89ced4d8",
+    "id": "114",
+    "active": false
+  }
